@@ -141,7 +141,7 @@ class BNN(Chain):
             f = lambda x: x
         return f
 
-    def __call__(self, x, apply_hidden=True, apply_first=False):
+    def __call__(self, x, apply_input=False, apply_hidden=True):
         """
         ネットワークの出力を作成
         
@@ -149,13 +149,13 @@ class BNN(Chain):
         :param bool apply_hidden: 
             隠れ層に対してマスクをかけるかのフラグ. 
             True のときm `mask` によって生成されたマスクを隠れ層に掛ける
-        :param bool apply_first:
+        :param bool apply_input:
             入力層に対してマスクをかけるかのフラグ. 
             True にすると学習が不安定になることが観測されているため, 学習時には False が推奨
         :return: 出力
         :rtype: Variable
         """
-        x1 = self.mask.apply(x, apply_first)
+        x1 = self.mask.apply(x, apply_input)
         h1 = self.activate(self.l1(x1))
 
         h1 = self.mask.apply(h1, apply_hidden)
