@@ -28,6 +28,7 @@ def make_data(size, function_id=1, seed=1):
     :return: 
     :rtype: tuple of (np.array, np.array)
     """
+    np.random.seed(seed)
     x = np.sort(np.random.uniform(-1.1, 1.1, size=100)).astype(np.float32)
     f = None
     if function_id == 1:
