@@ -4,8 +4,10 @@ __author__ = "nyk510"
 ドロップアウトを用いたニューラルネットワークの学習が, 重みに対するベイズ学習になっており
 学習済みのニューラルネットワークから, 重みの事後分布をサンプルできることを確認する
 """
+
 from bnn import BNN, Trainer
 import argparse
+
 
 def parser():
     p = argparse.ArgumentParser(description=__doc__)
@@ -16,10 +18,18 @@ def parser():
     args = p.parse_args()
     return args
 
+
 def main(model_params, train_params):
+    """
+    
+    :param dict model_params: 
+    :param dict train_params: 
+    :return: 
+    """
     model = BNN(1, 1, **model_params)
     trainer = Trainer(model)
     trainer.run(**train_params)
+    return
 
 
 if __name__ == "__main__":
