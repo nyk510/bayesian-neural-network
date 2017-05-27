@@ -5,7 +5,7 @@ __author__ = "nyk510"
 学習済みのニューラルネットワークから, 重みの事後分布をサンプルできることを確認する
 """
 
-from bnn import BNN, Trainer
+from bnn import BNNEstimator
 from bnn import fetch_data
 import argparse
 
@@ -28,9 +28,8 @@ def main(model_params, train_params):
     :param dict train_params: 
     :return: 
     """
-    model = BNN(**model_params)
-    trainer = Trainer(model)
-    trainer.fit(**train_params)
+    clf = BNNEstimator(**model_params)
+    clf.fit(**train_params)
     return
 
 
