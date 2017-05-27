@@ -10,6 +10,7 @@ from chainer import Variable
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from sklearn.preprocessing import StandardScaler
 
 from .bnn import BNN
 
@@ -56,10 +57,10 @@ class Trainer(object):
         elif np.issubdtype(x.dtype, np.float):
             x = x.astype(np.float32)
         else:
-            raise ValueError
+            x = x.astype(np.float32)
         return x
 
-    def fit(self, X, y, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50):
+    def fit(self, X, y, x_test, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50):
         """
         モデルの最適化の開始
 
@@ -74,8 +75,16 @@ class Trainer(object):
 
         N = X.shape[0]
 
+        self.x_scaler = StandardScaler()
+        X = self.x_scaler.fit_transform(X)
+        x_test = self.x_scaler.transform(x_test)
+
+        self.y_scaler = StandardScaler()
+        y = self.y_scaler.fit_transform(y)
+
         X = Variable(self._verify_array_shape(X))
         y = Variable(self._verify_array_shape(y))
+        self.x_test = self._verify_array_shape(x_test)
 
         self.optimizer.setup(self.model)
         self.optimizer.add_hook(WeightDecay(self.weight_decay))
@@ -109,8 +118,8 @@ class Trainer(object):
 
     def plot_posterior(self, x_train, y_train, n_samples=100):
         model = self.model
-        xx = np.linspace(-2., 2, 200, dtype=np.float32)
-        predict_values = [self.model(Variable(xx).reshape(-1, 1), apply_input=False, apply_hidden=True).data.reshape(-1)
+        xx = self.x_test
+        predict_values = [self.model(Variable(xx), apply_input=False, apply_hidden=True).data.reshape(-1)
                           for
                           i in range(n_samples)]
         predict_values = np.array(predict_values)
@@ -122,13 +131,13 @@ class Trainer(object):
 
         fig = plt.figure(figsize=(8, 5))
         ax1 = fig.add_subplot(111)
-        ax1.plot(x_train, y_train, "o", alpha=.3, color="C0", label="Training Data Points")
+        ax1.plot(x_train[:, 0], y_train[:, 0], "o", alpha=.3, color="C0", label="Training Data Points")
         for i in range(100):
             if i == 0:
-                ax1.plot(xx, predict_values[i], color="C1", alpha=.05, label="Posterior Samples")
+                ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.05, label="Posterior Samples")
             else:
-                ax1.plot(xx, predict_values[i], color="C1", alpha=.05)
-        ax1.plot(xx, predict_mean, "--", color="C1", label="Posterior Mean")
+                ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.05)
+        ax1.plot(xx[:, 0], predict_mean, "--", color="C1", label="Posterior Mean")
         # ax1.set_ylim(-3., 1.5)
         # ax1.set_xlim(-2, 2)
         ax1.legend(loc=4)
