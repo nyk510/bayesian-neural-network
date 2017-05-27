@@ -28,7 +28,7 @@ class Mask(object):
             self.mask_generator = self._dropout_mask
         elif name == "gaussian":
             self.mask_generator = self._gaussian_mask
-        elif name is None:
+        elif name is None or name.lower() == "none":
             self.mask_generator = self._none_mask
 
     def __repr__(self):
@@ -127,7 +127,7 @@ class BNN(Chain):
         """
         文字列からそれに対応する関数を取得
         
-        :param s: 関数を表す文字列
+        :param str s: 関数を表す文字列
         :return: 
         """
         if s == "relu":
