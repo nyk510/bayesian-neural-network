@@ -45,9 +45,9 @@ class Trainer(object):
         """
         numpy.array の shapeをチェックして chainer に投げられるようにする. 
 
-        :param np.ndarray x: 
+        :param np.array x: 
         :return: 
-        :rtype: Variable
+        :rtype: np.array
         """
         if len(x.shape) == 1:
             x = x.reshape(-1, 1)
@@ -64,8 +64,8 @@ class Trainer(object):
         """
         モデルの最適化の開始
 
-        :param np.ndarray X: 
-        :param np.ndarray y: 
+        :param np.array X: 
+        :param np.array y: 
         :param n_epoch: 
         :param batch_size: 
         :param freq_print_loss: 
