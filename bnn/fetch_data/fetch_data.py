@@ -8,7 +8,7 @@ import requests
 import csv
 
 
-def fetch_nikkei(start_drop="2016-06-01", end_drop="2017-01-11", use_past=False):
+def fetch_nikkei(start_drop="2017-04-01", end_drop="2017-05-27", use_past=False):
     """
     
     :param str start_drop: 
