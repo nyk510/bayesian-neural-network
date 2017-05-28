@@ -2,5 +2,4 @@
 __author__ = "nyk510"
 
 from .fetch_data import article_data, fetch_data
-from .bnn import BNN
-from .trainer import Trainer
+from .trainer import BNNEstimator
