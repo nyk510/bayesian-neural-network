@@ -36,7 +36,7 @@ def make_data(size, function_id=1, seed=1):
     :param int function_id: 
     :param int seed: 
     :return: データと正しい関数の集合
-    :rtype: tuple of (np.array, np.array, function)
+    :rtype: tuple[np.array, np.array, function]
     """
     np.random.seed(seed)
     x = np.sort(np.random.uniform(-1.1, 1.1, size=size)).astype(np.float32)
