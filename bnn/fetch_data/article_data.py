@@ -18,6 +18,16 @@ def func1(x):
     return x + np.sin(5 * x) - .8
 
 
+def func2(x):
+    """
+    人口データの正しい関数その2
+    :param np.ndarray x:
+    :return:
+    :rtype: np.ndarray
+    """
+    return np.sin(5 * x) * np.abs(x)
+
+
 def make_data(size, function_id=1, seed=1):
     """
     人工データの作成
@@ -29,11 +39,13 @@ def make_data(size, function_id=1, seed=1):
     :rtype: tuple of (np.array, np.array, function)
     """
     np.random.seed(seed)
-    x = np.sort(np.random.uniform(-1.1, 1.1, size=200)).astype(np.float32)
+    x = np.sort(np.random.uniform(-1.1, 1.1, size=size)).astype(np.float32)
     x = x[(x < 0.) | (x > .5)]
     f = None
     if function_id == 1:
         f = func1
+    elif function_id == 2:
+        f = func2
     else:
         # 別の関数で試したい場合は適当にここで指定する
         raise ValueError
