@@ -24,14 +24,12 @@ def parser():
 def main():
     args = parser()
 
-    data_source = args.data
+    data_source = str(args.data)
     x_train, y_train, x_test = None, None, None
-    if data_source == "nikkei":
+    if "art" in data_source.lower():
+        x_train, y_train, _ = article_data.make_data(size=100, function_type=data_source)
+    elif data_source == "nikkei":
         x_train, y_train, x_test = fetch_data.fetch_nikkei()
-    elif data_source == "art1":
-        x_train, y_train, f = article_data.make_data(size=300, function_id=1)
-    elif data_source == "art2":
-        x_train, y_train, f = article_data.make_data(size=300, function_id=2)
 
     input_dim = x_train.shape[1]
     output_dim = y_train.shape[1]
