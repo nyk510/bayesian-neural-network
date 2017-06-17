@@ -4,9 +4,10 @@ __author__ = "nyk510"
 事前分布からサンプリングされたニューラルネットワークの出力可視化スクリプト
 """
 
-from bnn import BNN
-from chainer import Variable
 import numpy as np
+from chainer import Variable
+
+from bnn import BNN
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -24,7 +25,7 @@ if __name__ == "__main__":
         list_y = np.array(list_y)
         data.append(
             {
-                "title": bnn.pretty_string(),
+                "title": bnn.__str__(),
                 "name": f_name,
                 "y": list_y
             }

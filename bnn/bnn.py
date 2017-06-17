@@ -30,6 +30,8 @@ class Mask(object):
             self.mask_generator = self._gaussian_mask
         elif name is None or name.lower() == "none":
             self.mask_generator = self._none_mask
+        else:
+            raise NameError("name: {name} に該当するmask関数が見当たりません. ".format(**locals()))
 
     def __repr__(self):
         s = "maskname={0.name}_prob={0.prob}".format(self)
@@ -79,11 +81,9 @@ class BNN(Chain):
     ベイジアンニューラルネットの重み学習を行うクラス
     """
 
-    def __init__(self, input_dim, output_dim, hidden_dim=512, activate="relu", mask_type="gaussian", prob=.5,
-                 lengthscale=10.):
+    def __init__(self, input_dim, output_dim,
+                 hidden_dim=512, activate="relu", mask_type="gaussian", prob=.5, lengthscale=10.):
         """
-        コンストラクタ
-        
         :param int input_dim: 入力層の次元数
         :param int output_dim: 出力層の次元数
         :param int hidden_dim: 隠れ層の次元数
@@ -102,7 +102,7 @@ class BNN(Chain):
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
         self.activate_name = activate
-        self.activate = self._get_function_by(activate)
+        self.activate = self._get_function(activate)
         self.mask_type = mask_type
         self.lengthscale = lengthscale
 
@@ -123,7 +123,7 @@ class BNN(Chain):
 
         self.mask = Mask(name=mask_type, prob=prob)
 
-    def _get_function_by(self, s):
+    def _get_function(self, s):
         """
         文字列からそれに対応する関数を取得
         
@@ -168,10 +168,9 @@ class BNN(Chain):
         h4 = self.l4(h3)
         return h4
 
-    def pretty_string(self):
+    def __str__(self):
         """
-        ネットワークの条件をいい感じの文字列にして返す
-        
+        ネットワークの条件をいい感じの文字列で表現する
         :return: ネットワーク条件の文字
         :rtype: str
         """
