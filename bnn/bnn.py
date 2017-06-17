@@ -168,10 +168,9 @@ class BNN(Chain):
         h4 = self.l4(h3)
         return h4
 
-    def pretty_string(self):
+    def __str__(self):
         """
-        ネットワークの条件をいい感じの文字列にして返す
-        
+        ネットワークの条件をいい感じの文字列で表現する
         :return: ネットワーク条件の文字
         :rtype: str
         """

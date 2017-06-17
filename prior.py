@@ -25,7 +25,7 @@ if __name__ == "__main__":
         list_y = np.array(list_y)
         data.append(
             {
-                "title": bnn.pretty_string(),
+                "title": bnn.__str__(),
                 "name": f_name,
                 "y": list_y
             }

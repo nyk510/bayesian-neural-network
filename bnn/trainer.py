@@ -51,7 +51,7 @@ class Transformer(object):
         :param bool transform_log: 目的変数をログ変換するかのbool. 
         :param bool scaling: 
         """
-        self.done_fitting = False
+        self._is_fitted = False
         self.transform_log = transform_log
         self.scaling = scaling
         if scaling:
@@ -68,11 +68,11 @@ class Transformer(object):
         if len(shape) == 1:
             x = x.reshape(-1, 1)
 
-        if self.done_fitting:
+        if self._is_fitted:
             x = self.scaler.transform(x)
         else:
             x = self.scaler.fit_transform(x)
-            self.done_fitting = True
+            self._is_fitted = True
         x = x.reshape(shape)
         return x
 
@@ -144,8 +144,8 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
     """
 
     def __init__(self, input_dim, output_dim, hidden_dim=512, activate="relu", mask_type="gaussian", prob=.5,
-                 lengthscale=10., optimizer="adam", weight_decay=4 * 10 ** -5, apply_input=False,
-                 n_samples=100, x_scaling=True, y_scaling=True):
+                 lengthscale=10., optimizer="adam", weight_decay=4 * 10 ** -8, apply_input=False,
+                 x_scaling=True, y_scaling=True):
         """
         :param int input_dim: 入力層の次元数
         :param int output_dim: 出力層の次元数
@@ -153,39 +153,41 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         :param str activate: 活性化関数
         :param str mask_type:
             変数へのマスクの種類を表すstring.
-            "dropout", "gaussian", Noneのいずれかを指定
+            "dropout", "gaussian", None のいずれかを指定
         :param float prob:
-            dropoutの確率を表すfloat.
+            dropoutの確率を表す [0, 1) の小数.
             0.のときdropoutをしないときに一致します.
-            [0, 1) の小数
         :param float lengthscale:
             初期のネットワーク重みの精度パラメータ. 大きい値になるほど0に近い値を取ります.
         :param str optimizer: optimizer を指す string.
         :param float weight_decay:
+            勾配の減衰パラメータ.
+            目的関数に対して, 指定した重みの加わったL2ノルム正則化と同じ役割を果たします.
         :param bool apply_input:
-        :param int n_samples:
+            入力次元に対して mask を適用するかどうかを表す bool.
         :param bool x_scaling:
+            入力変数を正規化するかを表す bool.
         :param bool y_scaling:
+            目的変数を正規化するかを表す bool.
         """
 
         self.model = BNN(input_dim, output_dim, hidden_dim, activate, mask_type, prob,
                          lengthscale)
         self.weight_decay = weight_decay
         self.apply_input = apply_input
-        self.n_samples = n_samples
         self.x_transformer = Transformer(scaling=x_scaling)
         self.y_transformer = Transformer(scaling=y_scaling)
 
         if optimizer == "adam":
             self.optimizer = optimizers.Adam()
 
-        self.conditions = self.model.pretty_string()
+        self.conditions = str(self.model)
         self.output_dir = "data/figure/{0.conditions}".format(self)
         # 画像の出力先作成
         if os.path.exists(self.output_dir) is False:
             os.makedirs(self.output_dir)
 
-    def fit(self, X, y, x_test=None, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50):
+    def fit(self, X, y, x_test=None, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50, n_samples=100):
         """
         モデルのパラメータチューニングの開始
         :param np.ndarray X:
@@ -195,16 +197,19 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         :param int batch_size:
         :param int freq_print_loss:
         :param int freq_plot:
+        :param int n_samples: 事後分布プロットの際の事後分布のサンプリング数.
         :return: self
         """
         X, y = self.preprocess(X, y)
-        if not x_test is None:
+        if x_test is not None:
             x_test = self.x_transformer.transform(x_test)
 
         N = X.shape[0]
+
+        # Variable 型への変換
         X = Variable(verify_array_shape(X))
         y = Variable(verify_array_shape(y))
-        if not x_test is None:
+        if x_test is not None:
             x_test = Variable(verify_array_shape(x_test))
 
         self.optimizer.setup(self.model)
@@ -227,7 +232,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 print("epoch: {e}\tloss:{l}".format(**locals()))
 
             if e % freq_plot == 0:
-                fig, ax = self.plot_posterior(x_test, X.data, y.data, n_samples=self.n_samples)
+                fig, ax = self.plot_posterior(x_test, X.data, y.data, n_samples=n_samples)
                 ax.set_title("epoch:{0:04d}".format(e))
                 fig.tight_layout()
                 file_path = os.path.join(self.output_dir, "epoch={e:04d}.png".format(**locals()))
@@ -235,7 +240,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 plt.close("all")
             list_loss.append([e, l])
 
-        save_logloss(list_loss, self.model.pretty_string())
+        save_logloss(list_loss, self.model.__str__())
 
     def plot_posterior(self, x_test, x_train=None, y_train=None, n_samples=100):
         model = self.model
@@ -269,7 +274,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
 
     def posterior(self, x, n=3):
         """
-        :param np.array x: 
+        :param np.ndarray x:
         :param int n: 
         :return: 
         """
