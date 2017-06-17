@@ -27,7 +27,7 @@ def main():
     data_source = args.data
     x_train, y_train, x_test = None, None, None
     if data_source == "nikkei":
-        x_train, y_train, x_test = fetch_data.fetch_nikkei
+        x_train, y_train, x_test = fetch_data.fetch_nikkei()
     elif data_source == "art1":
         x_train, y_train, f = article_data.make_data(size=300, function_id=1)
     elif data_source == "art2":
@@ -49,6 +49,7 @@ def main():
         "X": x_train,
         "y": y_train,
         "x_test": x_test,
+        "data_name": data_source
     }
     print(args)
 
