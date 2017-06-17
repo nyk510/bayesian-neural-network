@@ -15,7 +15,7 @@ def func1(x):
     :return: 
     :rtype: np.array
     """
-    return x + np.sin(5 * x) - .8
+    return x + np.sin(5 * x)
 
 
 def func2(x):

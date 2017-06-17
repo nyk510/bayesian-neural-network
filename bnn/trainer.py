@@ -144,7 +144,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
     """
 
     def __init__(self, input_dim, output_dim, hidden_dim=512, activate="relu", mask_type="gaussian", prob=.5,
-                 lengthscale=10., optimizer="adam", weight_decay=4 * 10 ** -8, apply_input=False,
+                 lengthscale=10., optimizer="adam", weight_decay=4 * 10 ** -5, apply_input=False,
                  x_scaling=True, y_scaling=True):
         """
         :param int input_dim: 入力層の次元数
@@ -180,19 +180,16 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
 
         if optimizer == "adam":
             self.optimizer = optimizers.Adam()
-
         self.conditions = str(self.model)
-        self.output_dir = "data/figure/{0.conditions}".format(self)
-        # 画像の出力先作成
-        if os.path.exists(self.output_dir) is False:
-            os.makedirs(self.output_dir)
 
-    def fit(self, X, y, x_test=None, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50, n_samples=100):
+    def fit(self, X, y, x_test=None, data_name=None, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50,
+            n_samples=100):
         """
         モデルのパラメータチューニングの開始
         :param np.ndarray X:
         :param np.ndarray y:
         :param np.ndarray | None x_test:
+        :param str | None data_name:
         :param int n_epoch:
         :param int batch_size:
         :param int freq_print_loss:
@@ -200,6 +197,12 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         :param int n_samples: 事後分布プロットの際の事後分布のサンプリング数.
         :return: self
         """
+        conditions = self.conditions
+        output_dir = "data/{data_name}/{conditions}".format(**locals())
+        # 画像の出力先作成
+        if os.path.exists(output_dir) is False:
+            os.makedirs(output_dir)
+
         X, y = self.preprocess(X, y)
         if x_test is not None:
             x_test = self.x_transformer.transform(x_test)
@@ -235,7 +238,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 fig, ax = self.plot_posterior(x_test, X.data, y.data, n_samples=n_samples)
                 ax.set_title("epoch:{0:04d}".format(e))
                 fig.tight_layout()
-                file_path = os.path.join(self.output_dir, "epoch={e:04d}.png".format(**locals()))
+                file_path = os.path.join(output_dir, "epoch={e:04d}.png".format(**locals()))
                 fig.savefig(file_path, dpi=150)
                 plt.close("all")
             list_loss.append([e, l])
@@ -245,44 +248,50 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
     def plot_posterior(self, x_test, x_train=None, y_train=None, n_samples=100):
         model = self.model
         if x_test is None:
-            xx = np.linspace(-2, 2, 200).reshape(-1, 1)
+            xx = np.linspace(-2.5, 2.5, 200).reshape(-1, 1)
         else:
             xx = self.x_transformer.inverse_transform(x_test)
 
         x_train, y_train = self.x_transformer.inverse_transform(x_train), self.inverse_y_transform(y_train)
         predict_values = self.posterior(xx, n=n_samples)
-        predict_values = np.array(predict_values)
 
         predict_mean = predict_values.mean(axis=0)
         predict_var = predict_values.var(axis=0)
-        tau = 1 ** 2 * (1 - model.mask.prob) / (2 * len(x_train) * 4 * 10 ** -3)
+        tau = (1. - model.mask.prob) * self.model.lengthscale ** 2. / (2 * len(x_train) * self.weight_decay)
         predict_var += tau ** -1
 
         fig = plt.figure(figsize=(8, 5))
         ax1 = fig.add_subplot(111)
-        ax1.plot(x_train[:, 0], y_train[:, 0], "o", alpha=.3, color="C0", label="Training Data Points")
+        ax1.plot(x_train[:, 0], y_train[:, 0], "o", markersize=3., color="C0", label="Training Data Points")
+
         for i in range(100):
             if i == 0:
-                ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.05, label="Posterior Samples")
+                ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.1, label="Posterior Samples", linewidth=.5)
             else:
-                ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.05)
+                ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.1, linewidth=.5)
+
         ax1.plot(xx[:, 0], predict_mean, "--", color="C1", label="Posterior Mean")
-        ax1.set_ylim(-3., 3)
-        ax1.set_xlim(-2, 2)
+        ax1.fill_between(xx[:, 0], predict_mean + predict_var, predict_mean - predict_var, color="C1",
+                         label="1 $\sigma$", alpha=.5)
+
+        ax1.set_ylim(-4.5, 4.5)
+        ax1.set_xlim(min(xx), max(xx))
         ax1.legend(loc=4)
         return fig, ax1
 
     def posterior(self, x, n=3):
         """
-        :param np.ndarray x:
+        :param np.array x:
         :param int n: 
-        :return: 
+        :return:
+        :rtype: np.array
         """
         x = verify_array_shape(x)
         x = self.preprocess(x)
         x = Variable(x)
         pred = [self.model(x, apply_input=False, apply_hidden=True).data.reshape(-1) for _ in range(n)]
         pred = [self.inverse_y_transform(p) for p in pred]
+        pred = np.array(pred)
         return pred
 
 
