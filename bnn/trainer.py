@@ -4,18 +4,38 @@ __author__ = "nyk510"
 BNNの訓練クラスの定義
 """
 
-from chainer.optimizer import WeightDecay
-from chainer import optimizers
-from chainer import Variable
-import numpy as np
-import matplotlib.pyplot as plt
 import os
-from sklearn.preprocessing import StandardScaler
+
+import chainer.functions as F
+import matplotlib.pyplot as plt
+import numpy as np
+from chainer import Variable
+from chainer import optimizers
+from chainer.optimizer import WeightDecay
 from sklearn.base import BaseEstimator
+from sklearn.preprocessing import StandardScaler
 
 from .bnn import BNN
 
-import chainer.functions as F
+
+def verify_array_shape(x):
+    """
+    numpy.array の shape をチェックして chainer に投げられるようにする.
+
+    :param np.array x:
+    :return:
+    :rtype: np.array
+    """
+    if len(x.shape) == 1:
+        x = x.reshape(-1, 1)
+
+    if np.issubdtype(x.dtype, np.integer):
+        x = x.astype(np.int32)
+    elif np.issubdtype(x.dtype, np.float):
+        x = x.astype(np.float32)
+    else:
+        x = x.astype(np.float32)
+    return x
 
 
 class Transformer(object):
@@ -31,7 +51,7 @@ class Transformer(object):
         :param bool transform_log: 目的変数をログ変換するかのbool. 
         :param bool scaling: 
         """
-        self.done_fitting = False
+        self._is_fitted = False
         self.transform_log = transform_log
         self.scaling = scaling
         if scaling:
@@ -48,10 +68,11 @@ class Transformer(object):
         if len(shape) == 1:
             x = x.reshape(-1, 1)
 
-        if self.done_fitting:
+        if self._is_fitted:
             x = self.scaler.transform(x)
         else:
             x = self.scaler.fit_transform(x)
+            self._is_fitted = True
         x = x.reshape(shape)
         return x
 
@@ -63,14 +84,14 @@ class Transformer(object):
         :param numpy.array x: 
         :rtype: numpy.array
         """
-        y_trans = x[:]
+        x_trains = x[:]
         if self.transform_log:
-            y_trans = np.log(x)
+            x_trains = np.log(x)
 
         if self.scaling:
-            y_trans = self._scaling(x)
+            x_trains = self._scaling(x)
 
-        return y_trans
+        return x_trains
 
     def inverse_transform(self, x):
         """
@@ -78,14 +99,14 @@ class Transformer(object):
         :param x: np.array
         :return: np.array
         """
-        y_inv = x[:]
+        x_inv = x[:]
         if self.scaling:
-            y_inv = self.scaler.inverse_transform(x)
+            x_inv = self.scaler.inverse_transform(x)
 
         if self.transform_log:
-            y_inv = np.exp(y_inv)
+            x_inv = np.exp(x_inv)
 
-        return y_inv
+        return x_inv
 
 
 class PreprocessMixin(object):
@@ -123,67 +144,73 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
     """
 
     def __init__(self, input_dim, output_dim, hidden_dim=512, activate="relu", mask_type="gaussian", prob=.5,
-                 lengthscale=10., optimizer="adam", weight_decay=4 * 10 ** -5, apply_input=False,
-                 n_samples=100, x_scaling=True, y_scaling=True):
+                 lengthscale=10., optimizer="adam", weight_decay=4 * 10 ** -8, apply_input=False,
+                 x_scaling=True, y_scaling=True):
+        """
+        :param int input_dim: 入力層の次元数
+        :param int output_dim: 出力層の次元数
+        :param int hidden_dim: 隠れ層の次元数
+        :param str activate: 活性化関数
+        :param str mask_type:
+            変数へのマスクの種類を表すstring.
+            "dropout", "gaussian", None のいずれかを指定
+        :param float prob:
+            dropoutの確率を表す [0, 1) の小数.
+            0.のときdropoutをしないときに一致します.
+        :param float lengthscale:
+            初期のネットワーク重みの精度パラメータ. 大きい値になるほど0に近い値を取ります.
+        :param str optimizer: optimizer を指す string.
+        :param float weight_decay:
+            勾配の減衰パラメータ.
+            目的関数に対して, 指定した重みの加わったL2ノルム正則化と同じ役割を果たします.
+        :param bool apply_input:
+            入力次元に対して mask を適用するかどうかを表す bool.
+        :param bool x_scaling:
+            入力変数を正規化するかを表す bool.
+        :param bool y_scaling:
+            目的変数を正規化するかを表す bool.
         """
 
-        :param BNN model: Bayesian Neural Network モデル
-        :param str optimizer: optimizer を指す string.
-        """
         self.model = BNN(input_dim, output_dim, hidden_dim, activate, mask_type, prob,
                          lengthscale)
         self.weight_decay = weight_decay
         self.apply_input = apply_input
-        self.n_samples = n_samples
         self.x_transformer = Transformer(scaling=x_scaling)
         self.y_transformer = Transformer(scaling=y_scaling)
 
         if optimizer == "adam":
             self.optimizer = optimizers.Adam()
 
+        self.conditions = str(self.model)
+        self.output_dir = "data/figure/{0.conditions}".format(self)
         # 画像の出力先作成
-        if os.path.exists("data/figures") is False:
-            os.makedirs("data/figures")
+        if os.path.exists(self.output_dir) is False:
+            os.makedirs(self.output_dir)
 
-    def _verify_array_shape(self, x):
+    def fit(self, X, y, x_test=None, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50, n_samples=100):
         """
-        numpy.array の shapeをチェックして chainer に投げられるようにする. 
-
-        :param np.ndarray x: 
-        :return: 
-        :rtype: Variable
+        モデルのパラメータチューニングの開始
+        :param np.ndarray X:
+        :param np.ndarray y:
+        :param np.ndarray | None x_test:
+        :param int n_epoch:
+        :param int batch_size:
+        :param int freq_print_loss:
+        :param int freq_plot:
+        :param int n_samples: 事後分布プロットの際の事後分布のサンプリング数.
+        :return: self
         """
-        if len(x.shape) == 1:
-            x = x.reshape(-1, 1)
-
-        if np.issubdtype(x.dtype, np.integer):
-            x = x.astype(np.int32)
-        elif np.issubdtype(x.dtype, np.float):
-            x = x.astype(np.float32)
-        else:
-            x = x.astype(np.float32)
-        return x
-
-    def fit(self, X, y, x_test=None, n_epoch=1000, batch_size=20, freq_print_loss=10, freq_plot=50):
-        """
-        モデルの最適化の開始
-
-        :param np.ndarray X: 
-        :param np.ndarray y: 
-        :param n_epoch: 
-        :param batch_size: 
-        :param freq_print_loss: 
-        :param freq_plot: 
-        :return: 
-        """
-
         X, y = self.preprocess(X, y)
-        x_test = self.x_transformer.transform(x_test)
+        if x_test is not None:
+            x_test = self.x_transformer.transform(x_test)
 
         N = X.shape[0]
-        X = Variable(self._verify_array_shape(X))
-        y = Variable(self._verify_array_shape(y))
-        self.x_test = self._verify_array_shape(x_test)
+
+        # Variable 型への変換
+        X = Variable(verify_array_shape(X))
+        y = Variable(verify_array_shape(y))
+        if x_test is not None:
+            x_test = Variable(verify_array_shape(x_test))
 
         self.optimizer.setup(self.model)
         self.optimizer.add_hook(WeightDecay(self.weight_decay))
@@ -205,19 +232,23 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 print("epoch: {e}\tloss:{l}".format(**locals()))
 
             if e % freq_plot == 0:
-                fig, ax = self.plot_posterior(x_test, X.data, y.data, n_samples=self.n_samples)
-                ax.set_title("epoch: {0}".format(e))
+                fig, ax = self.plot_posterior(x_test, X.data, y.data, n_samples=n_samples)
+                ax.set_title("epoch:{0:04d}".format(e))
                 fig.tight_layout()
-                s_condition = self.model.pretty_string()
-                fig.savefig("data/figures/epoch={e:04d}_{s_condition}.png".format(**locals()), dpi=150)
+                file_path = os.path.join(self.output_dir, "epoch={e:04d}.png".format(**locals()))
+                fig.savefig(file_path, dpi=150)
                 plt.close("all")
             list_loss.append([e, l])
 
-        plot_logloss(list_loss, self.model.pretty_string())
+        save_logloss(list_loss, self.model.__str__())
 
     def plot_posterior(self, x_test, x_train=None, y_train=None, n_samples=100):
         model = self.model
-        xx = self.x_transformer.inverse_transform(x_test)
+        if x_test is None:
+            xx = np.linspace(-2, 2, 200).reshape(-1, 1)
+        else:
+            xx = self.x_transformer.inverse_transform(x_test)
+
         x_train, y_train = self.x_transformer.inverse_transform(x_train), self.inverse_y_transform(y_train)
         predict_values = self.posterior(xx, n=n_samples)
         predict_values = np.array(predict_values)
@@ -236,19 +267,18 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
             else:
                 ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.05)
         ax1.plot(xx[:, 0], predict_mean, "--", color="C1", label="Posterior Mean")
-        # ax1.set_ylim(-3., 1.5)
-        # ax1.set_xlim(-2, 2)
+        ax1.set_ylim(-3., 3)
+        ax1.set_xlim(-2, 2)
         ax1.legend(loc=4)
         return fig, ax1
 
     def posterior(self, x, n=3):
         """
-
-        :param np.array x: 
+        :param np.ndarray x:
         :param int n: 
         :return: 
         """
-        x = self._verify_array_shape(x)
+        x = verify_array_shape(x)
         x = self.preprocess(x)
         x = Variable(x)
         pred = [self.model(x, apply_input=False, apply_hidden=True).data.reshape(-1) for _ in range(n)]
@@ -256,7 +286,14 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         return pred
 
 
-def plot_logloss(loss, name, save=True):
+def save_logloss(loss, name, save=True):
+    """
+    loss の epoch による変化を plot して保存.
+    :param list loss: loss が格納されたリスト
+    :param str name: ファイル名
+    :param bool save: 保存するかどうかのフラグ. True のとき name で保存する.
+    :return:
+    """
     loss = np.array(loss)
     fig = plt.figure(figsize=(10, 6))
     ax1 = fig.add_subplot(111)
