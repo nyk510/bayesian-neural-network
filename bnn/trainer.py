@@ -18,13 +18,19 @@ from sklearn.preprocessing import StandardScaler
 from .bnn import BNN
 
 
-def verify_array_shape(x):
+def preprocess_array_format(x):
     """
-    numpy.array の shape をチェックして chainer に投げられるようにする.
+     array の shape, 及び type をチェックして chainer に投げられるようにする.
 
-    :param np.array x:
+    1. shapeの修正:
+         (n_samples, ) -> (n_samples, 1)
+    2. dtype の修正:
+        int -> np.int32
+        float -> np.float32
+
+    :param np.ndarray x:
     :return:
-    :rtype: np.array
+    :rtype: np.ndarray
     """
     if len(x.shape) == 1:
         x = x.reshape(-1, 1)
@@ -60,9 +66,9 @@ class Transformer(object):
     def _scaling(self, x):
         """
 
-        :param numpy.ndarray x: 変換する変数配列 
+        :param np.ndarray x: 変換する変数配列
         :return: 
-        :rtype: numpy.ndarray
+        :rtype: np.ndarray
         """
         shape = x.shape
         if len(shape) == 1:
@@ -81,8 +87,8 @@ class Transformer(object):
         目的変数のリストを受け取って変換器を作成し, 変換後の値を返す
         * log変換 -> scaling変換 [-1,+1]
 
-        :param numpy.array x: 
-        :rtype: numpy.array
+        :param np.ndarray x:
+        :rtype: np.ndarray
         """
         x_trains = x[:]
         if self.transform_log:
@@ -96,8 +102,8 @@ class Transformer(object):
     def inverse_transform(self, x):
         """
         変換された値を元の値に逆変換
-        :param x: np.array
-        :return: np.array
+        :param x: np.ndarray
+        :return: np.ndarray
         """
         x_inv = x[:]
         if self.scaling:
@@ -117,8 +123,8 @@ class PreprocessMixin(object):
     def preprocess(self, X, y=None):
         """
         入力変数の変換
-        :param numpy.ndarray X: 
-        :param numpy.ndarray y: 
+        :param np.ndarray X:
+        :param np.ndarray y:
         :return: 変換後の変数のタプル
         :rtype: tuple of (numpy.ndarray, numpy.ndarray)
         """
@@ -210,10 +216,10 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         N = X.shape[0]
 
         # Variable 型への変換
-        X = Variable(verify_array_shape(X))
-        y = Variable(verify_array_shape(y))
+        X = Variable(preprocess_array_format(X))
+        y = Variable(preprocess_array_format(y))
         if x_test is not None:
-            x_test = Variable(verify_array_shape(x_test))
+            x_test = Variable(preprocess_array_format(x_test))
 
         self.optimizer.setup(self.model)
         self.optimizer.add_hook(WeightDecay(self.weight_decay))
@@ -243,7 +249,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 plt.close("all")
             list_loss.append([e, l])
 
-        save_logloss(list_loss, self.model.__str__())
+        save_logloss(list_loss, name=str(self.model))
 
     def plot_posterior(self, x_test, x_train=None, y_train=None, n_samples=100):
         model = self.model
@@ -259,6 +265,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         predict_var = predict_values.var(axis=0)
         tau = (1. - model.mask.prob) * self.model.lengthscale ** 2. / (2 * len(x_train) * self.weight_decay)
         predict_var += tau ** -1
+        predict_sigma = predict_var ** .5
 
         fig = plt.figure(figsize=(8, 5))
         ax1 = fig.add_subplot(111)
@@ -271,7 +278,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.1, linewidth=.5)
 
         ax1.plot(xx[:, 0], predict_mean, "--", color="C1", label="Posterior Mean")
-        ax1.fill_between(xx[:, 0], predict_mean + predict_var, predict_mean - predict_var, color="C1",
+        ax1.fill_between(xx[:, 0], predict_mean + predict_sigma, predict_mean - predict_sigma, color="C1",
                          label="1 $\sigma$", alpha=.5)
 
         ax1.set_ylim(-4.5, 4.5)
@@ -281,12 +288,12 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
 
     def posterior(self, x, n=3):
         """
-        :param np.array x:
+        :param np.ndarray x:
         :param int n: 
         :return:
-        :rtype: np.array
+        :rtype: np.ndarray
         """
-        x = verify_array_shape(x)
+        x = preprocess_array_format(x)
         x = self.preprocess(x)
         x = Variable(x)
         pred = [self.model(x, apply_input=False, apply_hidden=True).data.reshape(-1) for _ in range(n)]
