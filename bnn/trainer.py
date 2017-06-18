@@ -249,7 +249,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 plt.close("all")
             list_loss.append([e, l])
 
-        save_logloss(list_loss, self.model.__str__())
+        save_logloss(list_loss, name=str(self.model))
 
     def plot_posterior(self, x_test, x_train=None, y_train=None, n_samples=100):
         model = self.model
@@ -265,6 +265,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         predict_var = predict_values.var(axis=0)
         tau = (1. - model.mask.prob) * self.model.lengthscale ** 2. / (2 * len(x_train) * self.weight_decay)
         predict_var += tau ** -1
+        predict_sigma = predict_var ** .5
 
         fig = plt.figure(figsize=(8, 5))
         ax1 = fig.add_subplot(111)
@@ -277,7 +278,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
                 ax1.plot(xx[:, 0], predict_values[i], color="C1", alpha=.1, linewidth=.5)
 
         ax1.plot(xx[:, 0], predict_mean, "--", color="C1", label="Posterior Mean")
-        ax1.fill_between(xx[:, 0], predict_mean + predict_var, predict_mean - predict_var, color="C1",
+        ax1.fill_between(xx[:, 0], predict_mean + predict_sigma, predict_mean - predict_sigma, color="C1",
                          label="1 $\sigma$", alpha=.5)
 
         ax1.set_ylim(-4.5, 4.5)

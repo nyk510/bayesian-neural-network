@@ -11,6 +11,24 @@ import chainer.links as L
 import numpy as np
 
 
+def get_function(s):
+    """
+    文字列からそれに対応する関数を取得
+
+    :param str s: 関数を表す文字列
+    :return:
+    """
+    if s == "relu":
+        f = F.relu
+    elif s == "sigmoid":
+        f = F.sigmoid
+    elif s == "tanh":
+        f = F.tanh
+    else:
+        raise NameError("文字列: {x} に対応する関数が見つかりません".format(**locals()))
+    return f
+
+
 class Mask(object):
     """
     入力変数に数値を掛けて摂動を与える関数クラス
@@ -33,7 +51,7 @@ class Mask(object):
         else:
             raise NameError("name: {name} に該当するmask関数が見当たりません. ".format(**locals()))
 
-    def __repr__(self):
+    def __str__(self):
         s = "maskname={0.name}_prob={0.prob}".format(self)
         return s
 
@@ -102,7 +120,7 @@ class BNN(Chain):
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
         self.activate_name = activate
-        self.activate = self._get_function(activate)
+        self.activate = get_function(activate)
         self.mask_type = mask_type
         self.lengthscale = lengthscale
 
@@ -122,24 +140,6 @@ class BNN(Chain):
         )
 
         self.mask = Mask(name=mask_type, prob=prob)
-
-    def _get_function(self, s):
-        """
-        文字列からそれに対応する関数を取得
-        
-        :param str s: 関数を表す文字列
-        :return: 
-        """
-        if s == "relu":
-            f = F.relu
-        elif s == "sigmoid":
-            f = F.sigmoid
-        elif s == "tanh":
-            f = F.tanh
-        else:
-            print("対応する関数が見つかりません")
-            f = lambda x: x
-        return f
 
     def __call__(self, x, apply_input=False, apply_hidden=True):
         """
