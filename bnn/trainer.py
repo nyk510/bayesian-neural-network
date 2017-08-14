@@ -267,9 +267,10 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         predict_var += tau ** -1
         predict_sigma = predict_var ** .5
 
-        fig = plt.figure(figsize=(8, 5))
+        fig = plt.figure(figsize=(6, 6))
         ax1 = fig.add_subplot(111)
-        ax1.plot(x_train[:, 0], y_train[:, 0], "o", markersize=3., color="C0", label="Training Data Points")
+        ax1.plot(x_train[:, 0], y_train[:, 0], "o", markersize=6., color="C0", label="Training Data Points",
+                 fillstyle="none")
 
         for i in range(100):
             if i == 0:
@@ -281,7 +282,7 @@ class BNNEstimator(BaseEstimator, PreprocessMixin):
         ax1.fill_between(xx[:, 0], predict_mean + predict_sigma, predict_mean - predict_sigma, color="C1",
                          label="1 $\sigma$", alpha=.5)
 
-        ax1.set_ylim(-4.5, 4.5)
+        ax1.set_ylim(-3.2, 3.2)
         ax1.set_xlim(min(xx), max(xx))
         ax1.legend(loc=4)
         return fig, ax1

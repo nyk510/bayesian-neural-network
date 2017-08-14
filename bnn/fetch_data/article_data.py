@@ -12,8 +12,9 @@ class ArtificialData(object):
     人口データを作成するクラス
     """
 
-    def __init__(self, n_samples):
+    def __init__(self, n_samples=100, noise_scale=.1):
         self.n_samples = n_samples
+        self.noise_scale = noise_scale
 
     def true_function(self, x):
         """
@@ -24,22 +25,33 @@ class ArtificialData(object):
         """
         raise NotImplementedError
 
-    def generate(self, x):
-        raise NotImplementedError
+    def make_x(self):
+        return np.sort(np.random.uniform(-1.5, 1.5, size=self.n_samples)).astype(np.float32).reshape(-1, 1)
+
+    def make_noise(self, x):
+        return np.random.normal(loc=0, scale=self.noise_scale, size=x.shape)
+
+    def generate(self):
+        x = self.make_x()
+        y = self.true_function(x)
+        y += self.make_noise(y)
+        return x, y
 
 
 class Art1(ArtificialData):
-    def __init__(self, n_samples, noise_scale=.1):
-        self.noise_scale = noise_scale
-        super().__init__(n_samples)
-
     def true_function(self, x):
         return func1(x)
 
-    def generate(self, x):
-        y = self.true_function(x)
-        y += np.random.normal(loc=0, scale=self.noise_scale, size=x.shape)
-        return y
+
+class Art2(ArtificialData):
+    def true_function(self, x):
+        return func2(x)
+
+    def make_x(self):
+        x1 = np.random.uniform(-1.5, -.5, size=int(self.n_samples / 2))
+        x2 = np.random.uniform(.5, 1.5, size=self.n_samples - x1.shape[0])
+        x = np.vstack((x1, x2)).reshape(-1, 1)
+        return np.sort(x)
 
 
 def func1(x):
@@ -74,17 +86,16 @@ def make_data(size, function_type="art1", seed=1):
     :rtype: tuple[np.array, np.array, function]
     """
     np.random.seed(seed)
-    x = np.sort(np.random.uniform(-1.5, 1.5, size=size)).astype(np.float32).reshape(-1, 1)
+
     f = None
     function_id = int(function_type[-1])
+    sample_maker = None
     if function_id == 1:
-        f = func1
+        sample_maker = Art1(size)
     elif function_id == 2:
-        f = func2
+        sample_maker = Art2(size)
     else:
         # 別の関数で試したい場合は適当にここで指定する
         raise ValueError
-
-    y = f(x) + np.random.normal(loc=0, scale=.1, size=x.shape)
-    y = y.astype(np.float32)
-    return x, y, f
+    x, y = sample_maker.generate()
+    return x, y, sample_maker.true_function
