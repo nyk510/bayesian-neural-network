@@ -36,7 +36,26 @@ x_train, y_train, _ = article_data.make_data(size=100, function_type="art1")
 clf.fix(x_train, y_train, data_name="art1")
 ```
 
+## Run with sample setting
+
+```bash
+python main.py -h
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -e E                  number of epochs.
+  -m MASK, --mask MASK  type of mask function. dropout, gaussian, none.
+  -a ACTIVATE, --activate ACTIVATE
+                        type of activate function.
+  -d DATA, --data DATA
+  --hidden HIDDEN       number of hidden dimensions.
+```
+
 ## Example
+
+```bash
+python main.py
+```
 
 * hidden layer dim: 512
 * activation: relu
@@ -45,12 +64,26 @@ clf.fix(x_train, y_train, data_name="art1")
 
 ![](./sample_figures/hidden=512_relu_dropout.gif)
 
-活性化関数のみ変更
+活性化関数を `sigmoid` に変更
 
-* activation: relu -> sigmoid
+```bash
+python main.py -a sigmoid
+```
 
 ![](sample_figures/hidden=512_sigmoid.gif)
 
-* hidden layer dim: 512 -> 32
+隠れ層の次元を 512 -> 32 に変更
+
+```bash
+python main.py --hidden 32
+```
 
 ![](sample_figures/hidden=32_relu_dropout.gif)
+
+データセットを変更
+
+```bash
+python main.py --data art2
+```
+
+![](sample_figures/hidden=512_art2.png)
