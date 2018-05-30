@@ -7,7 +7,7 @@ __author__ = "nyk510"
 import numpy as np
 from chainer import Variable
 
-from bnn import BNN
+from bnn.bnn import BNN
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
