@@ -12,12 +12,36 @@
 
 ## Requirements
 
+BNN モジュールの実行に必要なパッケージは以下のとおりです.
+
 ```text
-chainer
+chainer==1.24.0
 numpy
 matplotlib
 scikit-learn
 pandas
+```
+
+## Quick Start
+
+### With Docker (Recommended)
+
+docker + docker-compose で実行するのがもっとも手軽です。実行のためにホストマシン上に docker 及び docker-compose をインストールしておいてください。
+インストール後に以下のコマンドを実行すると [localhost:7011]() に jupyter notebook が起動します
+
+```bash
+cp project.env .env
+docker-compose build
+docker-compose up -d
+```
+
+`docker-compose ps` を実行してちゃんと jupyter が起動しているか確認します.(State が Up になっていれば OK です) 以下の例であれば localhost:7010 に jupyter が起動しています.
+
+```bash
+➜ docker-compose ps
+    Name                   Command               State           Ports
+-------------------------------------------------------------------------------
+bayse-jupyter   /usr/bin/tini -- jupyter n ...   Up      0.0.0.0:7010->8888/tcp
 ```
 
 ## Usage

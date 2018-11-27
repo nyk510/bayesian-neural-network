@@ -1,0 +1,23 @@
+version: '2.3'
+services:
+  jupyter:
+    build: 
+      context: ./
+      dockerfile: ./docker/Dockerfile
+    image: bayse
+    container_name: bayse-jupyter
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+      # apply your local custom.css
+      - ./docker/jupyter-custom.css:/home/penguin/.jupyter/custom/custom.css
+      # js font matplotlib
+      - ./docker/matplotlibrc:/opt/conda/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc
+    env_file: 
+      - ./.env
+    environment:
+    # workingdir に python の path を通すことで
+    # プロジェクトルートに配置した自作のモジュールを import できるようにしている
+      - PYTHONPATH=/var/www
+    ports:
+      - ${JUPYTER_PORT}:8888
