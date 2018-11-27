@@ -27,7 +27,7 @@ pandas
 ### With Docker (Recommended)
 
 docker + docker-compose で実行するのがもっとも手軽です。実行のためにホストマシン上に docker 及び docker-compose をインストールしておいてください。
-インストール後に以下のコマンドを実行すると [localhost:7011]() に jupyter notebook が起動します
+インストール後に以下のコマンドを実行すると [localhost:7010](http://localhost:7010) に jupyter notebook が起動します
 
 ```bash
 cp project.env .env
@@ -44,6 +44,8 @@ docker-compose up -d
 bayse-jupyter   /usr/bin/tini -- jupyter n ...   Up      0.0.0.0:7010->8888/tcp
 ```
 
+> [http://localhost:7010/notebooks/notebooks/simple_sample.ipynb](http://localhost:7010/notebooks/notebooks/simple_sample.ipynb) にサンプルコードがありますので参考にしてください
+
 ## Usage
 
 ```python
@@ -55,9 +57,7 @@ clf = BNNEstimator()
 x_train, y_train, _ = article_data.make_data(size=100, function_type="art1")
 
 # data_name は出力先のフォルダを作成するのに必要
-# ./data/{data_name}/{conditions}/ に
-# 50エポックごとの事後分布による予測結果の画像が保存される
-clf.fix(x_train, y_train, data_name="art1")
+clf.fit(x_train, y_train, data_name="art1")
 ```
 
 ## Run with sample setting
@@ -76,6 +76,9 @@ optional arguments:
 ```
 
 ## Example
+
+> NOTE: docker で動かしている場合には container 内部でコマンドを実行する必要があります。
+> `docker exec -it bayse-jupyter bash` でコンテナに潜り込んだ後に実行してください。
 
 ```bash
 python main.py
